@@ -101,7 +101,8 @@ private fun fill(tool: ToolSpec, clause: String, layer: Int): FunctionCall? {
     val room = findRoom(clause)
     return when (tool.name) {
         "set_lights" -> {
-            val on = boolOnOff(clause) ?: if (Regex("\\b(dim|brighten|lights?)\\b", RegexOption.IGNORE_CASE).containsMatchIn(clause)) true else return null
+            if (!Regex("\\b(lights?|lamp|bulbs?|dim|brighten|darken)\\b", RegexOption.IGNORE_CASE).containsMatchIn(clause)) return null
+            val on = boolOnOff(clause) ?: true
             val args = mutableMapOf<String, Any>("room" to (room ?: "living"), "on" to on)
             if ("dim" in t && layer >= 5) args["brightness"] = 30
             if ("brighten" in t && layer >= 5) args["brightness"] = 100
@@ -190,7 +191,7 @@ object NeedleEngine {
             var best: Triple<ToolSpec, FunctionCall, Double>? = null
             var bestTrig = false
             for (tool in TOOLS) {
-                val trig = tool.triggers.any { it.containsMatchIn(clause) || it.containsMatchIn(raw) }
+                val trig = tool.triggers.any { it.containsMatchIn(clause) }
                 val call = fill(tool, clause, depth) ?: continue
                 val score = (if (trig) 0.9 else 0.62) + 0.08
                 if (best == null || score > best.third) {
