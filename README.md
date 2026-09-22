@@ -16,9 +16,11 @@ Sibling project: private [`iaz54/jevharness`](https://github.com/iaz54/jevharnes
 
 ## Install the APK
 
-1. GitHub → **Actions** → **Build debug APK** (also runs on every push to `main`). First run ~10 minutes.
-2. Download artifact **`latch-debug`** → `Latch-1.0.0.apk`.
-3. On the phone, allow unknown sources and install.
+**[Download Latch-1.0.0.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.0.0.apk)** — debug-signed, Android 8+, 15.6 MB. Also in [`dist/Latch-1.0.0.apk`](https://github.com/iaz54/needle-harness/blob/main/dist/Latch-1.0.0.apk) and [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
+
+On the phone: allow unknown sources. If Chrome says the file is uncommon, tap Keep, then Install.
+
+GitHub Actions still builds a fresh debug APK on every push to `main` (artifact **`latch-debug`**).
 
 ## Try
 

@@ -7,5 +7,6 @@
 /app/build
 /captures
 *.apk
+!dist/*.apk
 *.ap_
 *.dex
