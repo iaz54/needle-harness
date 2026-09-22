@@ -45,10 +45,39 @@ private val TOOLS = listOf(
     ToolSpec("set_alarm", listOf(Regex("\\balarm\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("start_timer", listOf(Regex("\\btimer\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("play_media", listOf(Regex("\\b(play|pause|skip|resume)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("start_navigation", listOf(Regex("\\b(navigate|navigation|directions|take me|drive to|walk to|nav to|route to)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("stop_navigation", listOf(Regex("\\b(stop navigation|cancel route|end navigation|stop navigating)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("create_note", listOf(Regex("\\b(note|memo|remember)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("get_weather", listOf(Regex("\\b(weather|forecast)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("calculate", listOf(Regex("\\b(calculate|compute|what is \\d)", RegexOption.IGNORE_CASE))),
 )
+
+private val STOP_NAV = Regex("\\b(?:stop|cancel|end|quit)\\s+(?:the\\s+)?(?:nav|navigation|route|directions|trip)\\b|\\bstop navigating\\b", RegexOption.IGNORE_CASE)
+private val START_NAV = Regex("(?:navigate(?:\\s+me)?(?:\\s+to)?|start(?:ing)?\\s+nav(?:igation)?(?:\\s+to)?|take me(?:\\s+to)?|directions(?:\\s+to)?|route(?:\\s+me)?(?:\\s+to)?|(?:drive|walk|bike)(?:\\s+me)?\\s+to|nav\\s+to)\\s+(.+)", RegexOption.IGNORE_CASE)
+
+private fun parseMode(text: String): String {
+    val t = text.lowercase()
+    if (Regex("\\b(walk|walking|on foot)\\b").containsMatchIn(t)) return "walking"
+    if (Regex("\\b(transit|bus|train|subway)\\b").containsMatchIn(t)) return "transit"
+    if (Regex("\\b(bike|biking|bicycl)").containsMatchIn(t)) return "bicycling"
+    return "driving"
+}
+
+private fun parseDestination(text: String): String? {
+    if (STOP_NAV.containsMatchIn(text)) return null
+    val raw = START_NAV.find(text)?.groupValues?.get(1)?.trim()?.trimEnd('.', '!', '?') ?: return null
+    val cleaned = raw.replace(Regex("\\s+(please|now)$", RegexOption.IGNORE_CASE), "").trim()
+    val aliases = mapOf(
+        "home" to "Home", "house" to "Home", "my house" to "Home", "my home" to "Home",
+        "work" to "Work", "office" to "Work", "the office" to "Work",
+        "airport" to "Airport", "the airport" to "Airport",
+        "downtown" to "Downtown",
+        "grocery" to "grocery store", "the grocery" to "grocery store", "grocery store" to "grocery store",
+        "gas station" to "gas station", "the gas station" to "gas station",
+    )
+    val dest = aliases[cleaned.lowercase()] ?: cleaned
+    return dest.takeIf { it.length >= 2 }
+}
 
 private fun findRoom(text: String): String? {
     val lower = text.lowercase()
@@ -149,6 +178,12 @@ private fun fill(tool: ToolSpec, clause: String, layer: Int): FunctionCall? {
             Regex("play|resume").containsMatchIn(t) -> FunctionCall(tool.name, mapOf("action" to "play"))
             else -> null
         }
+        "start_navigation" -> {
+            if (STOP_NAV.containsMatchIn(clause)) return null
+            val dest = parseDestination(clause) ?: return null
+            FunctionCall(tool.name, mapOf("destination" to dest, "mode" to parseMode(clause)))
+        }
+        "stop_navigation" -> if (STOP_NAV.containsMatchIn(clause)) FunctionCall(tool.name, emptyMap()) else null
         "create_note" -> if (Regex("note|memo|remember").containsMatchIn(t))
             FunctionCall(tool.name, mapOf("title" to clause.trim(), "body" to clause)) else null
         "get_weather" -> {

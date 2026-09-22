@@ -1,5 +1,8 @@
 package com.iaz54.needleharness
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -37,11 +40,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iaz54.needleharness.engine.CompleteResult
+import com.iaz54.needleharness.engine.FunctionCall
 import com.iaz54.needleharness.engine.Gate
 import com.iaz54.needleharness.engine.HomeState
 import com.iaz54.needleharness.engine.NeedleEngine
@@ -58,6 +63,41 @@ private val Execute = Color(0xFF6EE7A8)
 private val Confirm = Color(0xFFC4B7A1)
 private val Paper = Color(0xFFD7DDD8)
 
+private fun modeLetter(mode: String) = when (mode) {
+    "walking" -> "w"
+    "bicycling" -> "b"
+    "transit" -> "r"
+    else -> "d"
+}
+
+private fun launchMaps(context: android.content.Context, destination: String, mode: String) {
+    val encoded = Uri.encode(destination)
+    val nav = Uri.parse("google.navigation:q=$encoded&mode=${modeLetter(mode)}")
+    val maps = Intent(Intent.ACTION_VIEW, nav).apply {
+        setPackage("com.google.android.apps.maps")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    try {
+        context.startActivity(maps)
+        return
+    } catch (_: ActivityNotFoundException) {
+        // fall through
+    }
+    val web = Uri.parse(
+        "https://www.google.com/maps/dir/?api=1&destination=$encoded&travelmode=$mode",
+    )
+    context.startActivity(Intent(Intent.ACTION_VIEW, web).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+}
+
+private fun maybeLaunchNav(context: android.content.Context, calls: List<FunctionCall>) {
+    for (call in calls) {
+        if (call.name != "start_navigation") continue
+        val dest = call.arguments["destination"] as? String ?: continue
+        val mode = call.arguments["mode"] as? String ?: "driving"
+        launchMaps(context, dest, mode)
+    }
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +108,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LatchApp() {
+    val context = LocalContext.current
     var home by remember { mutableStateOf(emptyHome()) }
     var input by remember { mutableStateOf("") }
     var last by remember { mutableStateOf<CompleteResult?>(null) }
@@ -80,6 +121,7 @@ fun LatchApp() {
         val msgs = calls.map { execute(home, it) }
         home = bump(home)
         log = listOf("EXECUTE · ${msgs.joinToString(" → ")}") + log
+        maybeLaunchNav(context, calls)
     }
 
     fun run(text: String) {
@@ -117,6 +159,7 @@ fun LatchApp() {
         )
         Text("Latch", color = Fg, fontSize = 36.sp)
         Text("Models that act, not chat. Commands stay on this phone.", color = Muted, fontSize = 14.sp)
+        NavBanner(home)
         HouseGrid(home)
         Text(
             "${layer}L  ·  ${14 + (layer * 0.7).toInt()} MB rung",
@@ -139,7 +182,7 @@ fun LatchApp() {
             value = input,
             onValueChange = { input = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("turn on the fan, set temperature to 10°…", color = Muted) },
+            placeholder = { Text("navigate to the airport…", color = Muted) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { if (input.isNotBlank()) run(input) }),
@@ -175,10 +218,10 @@ fun LatchApp() {
 @Composable
 private fun SampleChips(onRun: (String) -> Unit) {
     val samples = listOf(
+        "navigate to the airport",
+        "take me home",
+        "walk to the grocery store",
         "turn on the fan, set temperature to 10°, turn on bedroom light",
-        "Dim the bedroom and lock up",
-        "set an alarm for 7am",
-        "what's the weather in Lagos",
     )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         samples.forEach { s ->
@@ -193,6 +236,35 @@ private fun SampleChips(onRun: (String) -> Unit) {
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun NavBanner(home: HomeState) {
+    val dest = home.phone.navDestination
+    if (!home.phone.navActive || dest.isNullOrBlank()) {
+        Text(
+            "Say “navigate to the airport” — Latch opens Maps on this phone.",
+            color = Muted,
+            fontSize = 13.sp,
+        )
+        return
+    }
+    val context = LocalContext.current
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .border(1.dp, Execute, RoundedCornerShape(16.dp))
+            .background(Elevated, RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("NAVIGATING  ·  ${home.phone.navMode.uppercase()}", color = Execute, fontFamily = FontFamily.Monospace, fontSize = 11.sp, letterSpacing = 2.sp)
+        Text(dest, color = Fg, fontSize = 18.sp)
+        Button(
+            onClick = { launchMaps(context, dest, home.phone.navMode) },
+            colors = ButtonDefaults.buttonColors(containerColor = Execute, contentColor = Ink),
+        ) { Text("Open in Maps") }
     }
 }
 

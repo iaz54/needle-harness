@@ -20,6 +20,9 @@ data class PhoneState(
     var timerMin: Int? = null,
     var nowPlaying: String? = null,
     var playing: Boolean = false,
+    var navActive: Boolean = false,
+    var navDestination: String? = null,
+    var navMode: String = "driving",
 )
 
 data class HomeState(
@@ -110,6 +113,18 @@ fun execute(home: HomeState, call: FunctionCall): String {
             home.phone.playing = action != "pause"
             home.phone.nowPlaying = if (action == "skip") "Next track" else home.phone.nowPlaying ?: "Queue"
             "$action ${home.phone.nowPlaying}"
+        }
+        "start_navigation" -> {
+            home.phone.navActive = true
+            home.phone.navDestination = a["destination"] as String
+            home.phone.navMode = (a["mode"] as? String) ?: "driving"
+            "navigate ${home.phone.navMode} to ${home.phone.navDestination}"
+        }
+        "stop_navigation" -> {
+            home.phone.navActive = false
+            home.phone.navDestination = null
+            home.phone.navMode = "driving"
+            "navigation stopped"
         }
         "create_note" -> {
             val title = a["title"] as String

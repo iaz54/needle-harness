@@ -16,22 +16,23 @@ Sibling project: private [`iaz54/jevharness`](https://github.com/iaz54/jevharnes
 
 ## Install the APK
 
-**[Download Latch-1.0.0.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.0.0.apk)** — debug-signed, Android 8+, 15.6 MB. Also in [`dist/Latch-1.0.0.apk`](https://github.com/iaz54/needle-harness/blob/main/dist/Latch-1.0.0.apk) and [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
+**[Download Latch-1.0.0.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.0.0.apk)** — debug-signed, Android 8+. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
 
 On the phone: allow unknown sources. If Chrome says the file is uncommon, tap Keep, then Install.
 
-GitHub Actions still builds a fresh debug APK on every push to `main` (artifact **`latch-debug`**).
+GitHub Actions builds a fresh debug APK on every push to `main` (artifact **`latch-debug`**).
 
 ## Try
 
 ```
+navigate to the airport
+take me home
+walk to the grocery store
 turn on the fan, set temperature to 10°, turn on bedroom light
 Dim the bedroom and lock up
-set an alarm for 7am
-what's the weather in Lagos
 ```
 
-Watch the house tiles update. Drag the intelligence ladder: 2L keeps one call, 20L keeps the full chain.
+Navigation hands the destination to Google Maps (or the Maps web fallback). House tiles still update for lights / fan / locks.
 
 ## Build locally
 
