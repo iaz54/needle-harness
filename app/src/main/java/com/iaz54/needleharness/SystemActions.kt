@@ -92,9 +92,17 @@ object SystemActions {
         mode: String,
         avoid: List<String>,
     ) {
-        val complex = origin.isNotBlank() || waypoints.isNotEmpty() || avoid.isNotEmpty()
-        if (!complex) {
-            val nav = Uri.parse("google.navigation:q=${Uri.encode(destination)}&mode=${modeLetter(mode)}")
+        val stops = buildList {
+            if (origin.isNotBlank()) add(origin)
+            addAll(waypoints.filter { it.isNotBlank() })
+            add(destination)
+        }
+        if (stops.size <= 1) {
+            val avoidBits = avoidLetters(avoid)
+            val nav = Uri.parse(
+                "google.navigation:q=${Uri.encode(destination)}&mode=${modeLetter(mode)}" +
+                    if (avoidBits.isEmpty()) "" else "&avoid=$avoidBits",
+            )
             val maps = Intent(Intent.ACTION_VIEW, nav).setPackage("com.google.android.apps.maps").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             try {
                 context.startActivity(maps)
@@ -112,16 +120,15 @@ object SystemActions {
     }
 
     private fun mapsUrl(origin: String, destination: String, waypoints: List<String>, mode: String, avoid: List<String>): String {
-        val parts = mutableListOf(
-            "api=1",
-            "destination=${Uri.encode(destination)}",
-            "travelmode=$mode",
-            "dir_action=navigate",
-        )
-        if (origin.isNotBlank()) parts += "origin=${Uri.encode(origin)}"
-        if (waypoints.isNotEmpty()) parts += "waypoints=${waypoints.take(9).joinToString("|") { Uri.encode(it) }}"
-        if (avoid.isNotEmpty()) parts += "avoid=${avoid.joinToString("|")}"
-        return "https://www.google.com/maps/dir/?${parts.joinToString("&")}"
+        val chain = (waypoints.filter { it.isNotBlank() } + destination).joinToString("+to:") { Uri.encode(it) }
+        val saddr = if (origin.isBlank()) "" else "&saddr=${Uri.encode(origin)}"
+        return "https://maps.google.com/maps?f=d$saddr&daddr=$chain&dirflg=${avoidLetters(avoid)}${modeLetter(mode)}"
+    }
+
+    private fun avoidLetters(avoid: List<String>) = buildString {
+        if ("tolls" in avoid) append('t')
+        if ("highways" in avoid) append('h')
+        if ("ferries" in avoid) append('f')
     }
 
     private fun modeLetter(mode: String) = when (mode) {

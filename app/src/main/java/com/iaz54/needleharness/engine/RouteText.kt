@@ -110,7 +110,11 @@ object RouteText {
             RegexOption.IGNORE_CASE,
         ).find(rest) ?: return null
         if (STOP_NAV.containsMatchIn(rest)) return null
-        val destination = aliasPlace(start.groupValues[1])
+        val places = splitPlaces(start.groupValues[1])
+        if (places.size >= 2) {
+            return RoutePlan("", places.last(), places.dropLast(1).take(9), mode, avoid)
+        }
+        val destination = places.firstOrNull() ?: return null
         if (destination.length < 2) return null
         return RoutePlan("", destination, emptyList(), mode, avoid)
     }
@@ -128,7 +132,11 @@ object RouteText {
             }
             val prevIsRoute = Regex("""\bfrom\s+.+\sto\s+""", RegexOption.IGNORE_CASE).containsMatchIn(prev) ||
                 Regex("""\b(?:via|through|stopping at|stops at)\b""", RegexOption.IGNORE_CASE).containsMatchIn(prev) ||
-                Regex("""^(?:route|itinerary|trip|plan)\b""", RegexOption.IGNORE_CASE).containsMatchIn(prev)
+                Regex("""^(?:route|itinerary|trip|plan)\b""", RegexOption.IGNORE_CASE).containsMatchIn(prev) ||
+                Regex(
+                    """\b(?:navigate|directions|take me|(?:drive|walk|bike)(?:\s+me)?\s+to|nav\s+to)\b""",
+                    RegexOption.IGNORE_CASE,
+                ).containsMatchIn(prev)
             if (prevIsRoute) merged[merged.lastIndex] = "$prev and $atom" else merged += atom
         }
         if (merged.size >= 2 && merged.all { !COMMAND_START.containsMatchIn(it) }) {
@@ -185,8 +193,8 @@ object RouteText {
     }
 
     private fun splitPlaces(s: String): List<String> {
-        return s.split(Regex("""\s*(?:,|&|\+|\band\b|\bthen\b|\bplus\b|->|→)\s*""", RegexOption.IGNORE_CASE))
-            .map { it.replace(Regex("""^(?:at|to|via|through|by|stop(?:ping)?(?:\s+at)?)\s+""", RegexOption.IGNORE_CASE), "").trim() }
+        return s.split(Regex("""\s*(?:,|&|\+|\band then\b|\band\b|\bthen\b|\bplus\b|->|→)\s*""", RegexOption.IGNORE_CASE))
+            .map { it.replace(Regex("""^(?:(?:at|to|via|through|by|then|stop(?:ping)?(?:\s+at)?)\s+)+""", RegexOption.IGNORE_CASE), "").trim() }
             .map { aliasPlace(it) }
             .filter { it.length >= 2 }
     }

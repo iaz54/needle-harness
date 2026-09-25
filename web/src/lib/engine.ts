@@ -217,8 +217,8 @@ function parseAvoid(text: string): { avoid: AvoidFlag[]; rest: string } {
 
 function splitPlaces(s: string): string[] {
   return s
-    .split(/\s*(?:,|&|\+|\band\b|\bthen\b|\bplus\b|->|→)\s*/i)
-    .map((p) => p.replace(/^(?:at|to|via|through|by|stop(?:ping)?(?:\s+at)?)\s+/i, "").trim())
+    .split(/\s*(?:,|&|\+|\band then\b|\band\b|\bthen\b|\bplus\b|->|→)\s*/i)
+    .map((p) => p.replace(/^(?:(?:at|to|via|through|by|then|stop(?:ping)?(?:\s+at)?)\s+)+/i, "").trim())
     .map(aliasPlace)
     .filter((p) => p.length >= 2);
 }
@@ -324,9 +324,19 @@ export function parseRoute(raw: string): RouteArgs | null {
       rest,
     );
   if (!start) return null;
-  const destination = aliasPlace(start[1] ?? "");
-  if (destination.length < 2) return null;
   if (STOP_NAV.test(rest)) return null;
+  const places = splitPlaces(start[1] ?? "");
+  if (places.length >= 2) {
+    return {
+      origin: "",
+      destination: places[places.length - 1]!,
+      waypoints: places.slice(0, -1).slice(0, 9),
+      mode,
+      avoid,
+    };
+  }
+  const destination = places[0] ?? "";
+  if (destination.length < 2) return null;
   return { origin: "", destination, waypoints: [], mode, avoid };
 }
 
@@ -352,7 +362,8 @@ function mergeAtoms(atoms: string[]) {
     const prevIsRoute =
       /\bfrom\s+.+\sto\s+/i.test(prev) ||
       /\b(?:via|through|stopping at|stops at)\b/i.test(prev) ||
-      /^(?:route|itinerary|trip|plan)\b/i.test(prev);
+      /^(?:route|itinerary|trip|plan)\b/i.test(prev) ||
+      /\b(?:navigate|directions|take me|(?:drive|walk|bike)(?:\s+me)?\s+to|nav\s+to)\b/i.test(prev);
     if (prevIsRoute) merged[merged.length - 1] = `${prev} and ${atom}`;
     else merged.push(atom);
   }

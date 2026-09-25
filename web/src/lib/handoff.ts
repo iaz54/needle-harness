@@ -1,6 +1,6 @@
 import { appCatalog, type FunctionCall } from "./engine";
 import type { RouteArgs } from "./engine";
-import { androidMapsIntent, buildMapsUrl, mapsSearchUrl, type SavedPlace } from "./maps";
+import { androidDirectionsUrl, androidMapsIntent, buildMapsUrl, mapsSearchUrl, type SavedPlace } from "./maps";
 
 export type Handoff = {
   title: string;
@@ -71,12 +71,13 @@ export function handoffFor(call: FunctionCall, places: SavedPlace[]): Handoff | 
       const route = routeFromCall(call);
       if (route.destination.trim().length < 2) return null;
       const href = buildMapsUrl(route, places);
+      const native = androidDirectionsUrl(route, places);
       const stops = route.waypoints.length ? `${route.waypoints.length} stop${route.waypoints.length === 1 ? "" : "s"} · ` : "";
       return {
         title: "Open full route in Google Maps",
         detail: `${stops}${route.mode}${route.avoid.length ? ` · avoid ${route.avoid.join(", ")}` : ""}`,
         href,
-        androidHref: androidMapsIntent(href),
+        androidHref: native.startsWith("google.navigation:") ? native : androidMapsIntent(native),
         kind: "web",
       };
     }

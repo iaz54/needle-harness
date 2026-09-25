@@ -10,13 +10,13 @@ Latch is the code *around* the model:
 4. **Loop** — `complete()` → gate → mutate → verify
 5. **Gates** — confidence ≥ 0.72 auto-executes, middling asks, empty list refuses (never guesses a tool)
 
-v1.1.0 adds full multi-stop routes and general Android handoffs. The APK ships a Needle-protocol engine so it runs **offline with no download**. Swap in official `libneedle` + `needle3.cact` later via JNI; the Kotlin `NeedleEngine.complete()` shape already matches Needle’s `function_calls` / `confidence` / `suppressed_calls` JSON.
+v1.1.1 keeps every stop on the route. “Drive to the gas station and then the pharmacy and then JFK” stays one trip. Google Maps gets each place as its own stop (`daddr=a+to:b+to:c`), instead of turn-by-turn to a single destination.
 
 Sibling project: private [`iaz54/jevharness`](https://github.com/iaz54/jevharness) (AccessibilityService + TypeSafe Jev). Latch is the tool-calling rung. JevHarness is the UI-control rung.
 
 ## Install the APK
 
-**[Download Latch-1.1.0.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.1.0.apk)** — debug-signed, Android 8+. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
+**[Download Latch-1.1.1.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.1.1.apk)** — debug-signed, Android 8+. Reinstall over 1.1.0. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
 
 On the phone: allow unknown sources. If Chrome says the file is uncommon, tap Keep, then Install.
 
@@ -36,7 +36,7 @@ find late night pizza near me
 turn on the fan, set temperature to 10°, turn on bedroom light
 ```
 
-Navigation builds a full Google Maps route: origin, up to nine stops, destination, travel mode, and avoid tolls / highways / ferries. A single destination still starts turn-by-turn. Multi-stop routes open `maps/dir` inside the Maps app.
+Navigation fills every stop in Google Maps: origin, up to nine stops, then the destination. A single destination still starts turn-by-turn. Multi-stop routes use Maps’ `+to:` chain so the app enters each place, not just the last one.
 
 Phone actions that Android will not toggle silently hand off to the real system surface: Wi-Fi, Bluetooth, airplane mode, Do Not Disturb, display, sound (volume is applied on the music stream), alarms, timers, dialer, SMS, email, calendar, and launching installed apps.
 

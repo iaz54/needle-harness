@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { complete, parseRoute, splitClauses } from "./engine.ts";
+import { androidDirectionsUrl, buildMapsUrl } from "./maps.ts";
 
 test("single destination still routes", () => {
   const route = parseRoute("navigate to the airport");
@@ -43,6 +44,41 @@ test("comma itinerary", () => {
   assert.equal(route?.origin, "Home");
   assert.deepEqual(route?.waypoints, ["Whole Foods"]);
   assert.equal(route?.destination, "JFK");
+});
+
+test("then-chain without from is multiple stops", () => {
+  const route = parseRoute("drive to the gas station and then the pharmacy and then JFK");
+  assert.equal(route?.origin, "");
+  assert.deepEqual(route?.waypoints, ["gas station", "the pharmacy"]);
+  assert.equal(route?.destination, "JFK");
+  const kept = complete("drive to the gas station and then the pharmacy and then JFK");
+  assert.equal(kept.functionCalls.length, 1);
+  assert.deepEqual(kept.functionCalls[0]?.arguments.waypoints, ["gas station", "the pharmacy"]);
+  assert.equal(kept.functionCalls[0]?.arguments.destination, "JFK");
+});
+
+test("maps lists every stop instead of navigating to one", () => {
+  const route = {
+    origin: "Home",
+    destination: "JFK",
+    waypoints: ["gas station", "the pharmacy"],
+    mode: "driving" as const,
+    avoid: ["tolls" as const],
+  };
+  const url = buildMapsUrl(route, []);
+  assert.match(url, /\/maps\/dir\/Home\/gas%20station\/the%20pharmacy\/JFK/);
+  assert.doesNotMatch(url, /dir_action=navigate/);
+  assert.match(url, /avoid=tolls/);
+  const phone = androidDirectionsUrl(route, []);
+  assert.match(phone, /saddr=Home/);
+  assert.match(phone, /daddr=gas%20station\+to:the%20pharmacy\+to:JFK/);
+  assert.match(phone, /dirflg=td/);
+  const single = buildMapsUrl(
+    { origin: "", destination: "Airport", waypoints: [], mode: "driving", avoid: [] },
+    [],
+  );
+  assert.match(single, /dir_action=navigate/);
+  assert.match(single, /destination=Airport/);
 });
 
 test("house clauses stay separate", () => {
