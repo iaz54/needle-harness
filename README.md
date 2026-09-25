@@ -10,7 +10,7 @@ Latch is the code *around* the model:
 4. **Loop** — `complete()` → gate → mutate → verify
 5. **Gates** — confidence ≥ 0.72 auto-executes, middling asks, empty list refuses (never guesses a tool)
 
-The APK ships a Needle-protocol engine so it runs **offline with no download**. Swap in official `libneedle` + `needle3.cact` later via JNI; the Kotlin `NeedleEngine.complete()` shape already matches Needle’s `function_calls` / `confidence` / `suppressed_calls` JSON.
+v1.1.0 adds full multi-stop routes and general Android handoffs. The APK ships a Needle-protocol engine so it runs **offline with no download**. Swap in official `libneedle` + `needle3.cact` later via JNI; the Kotlin `NeedleEngine.complete()` shape already matches Needle’s `function_calls` / `confidence` / `suppressed_calls` JSON.
 
 Sibling project: private [`iaz54/jevharness`](https://github.com/iaz54/jevharness) (AccessibilityService + TypeSafe Jev). Latch is the tool-calling rung. JevHarness is the UI-control rung.
 
@@ -25,14 +25,22 @@ GitHub Actions builds a fresh debug APK on every push to `main` (artifact **`lat
 ## Try
 
 ```
-navigate to the airport
+drive from home to JFK via a gas station and the pharmacy, avoid tolls
+walk from Washington Square to the Brooklyn Bridge via the High Line
+transit from Penn Station to the Met then Central Park
 take me home
-walk to the grocery store
+open wifi settings and turn on do not disturb
+call 311
+text 9175550100 saying I'm on the way
+find late night pizza near me
 turn on the fan, set temperature to 10°, turn on bedroom light
-Dim the bedroom and lock up
 ```
 
-Navigation hands the destination to Google Maps (or the Maps web fallback). House tiles still update for lights / fan / locks.
+Navigation builds a full Google Maps route: origin, up to nine stops, destination, travel mode, and avoid tolls / highways / ferries. A single destination still starts turn-by-turn. Multi-stop routes open `maps/dir` inside the Maps app.
+
+Phone actions that Android will not toggle silently hand off to the real system surface: Wi-Fi, Bluetooth, airplane mode, Do Not Disturb, display, sound (volume is applied on the music stream), alarms, timers, dialer, SMS, email, calendar, and launching installed apps.
+
+House tiles still update for lights / fan / locks.
 
 ## Build locally
 

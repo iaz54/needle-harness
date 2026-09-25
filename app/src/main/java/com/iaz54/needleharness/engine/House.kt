@@ -15,14 +15,19 @@ data class PhoneState(
     var brightness: Int = 55,
     var dnd: Boolean = false,
     var wifi: Boolean = true,
+    var bluetooth: Boolean = true,
+    var airplane: Boolean = false,
     var torch: Boolean = false,
     var alarm: String? = null,
     var timerMin: Int? = null,
     var nowPlaying: String? = null,
     var playing: Boolean = false,
     var navActive: Boolean = false,
+    var navOrigin: String = "",
     var navDestination: String? = null,
+    var navWaypoints: MutableList<String> = mutableListOf(),
     var navMode: String = "driving",
+    var navAvoid: MutableList<String> = mutableListOf(),
 )
 
 data class HomeState(
@@ -53,6 +58,11 @@ fun emptyHome(): HomeState {
 }
 
 fun bump(home: HomeState): HomeState = home.copy(revision = home.revision + 1)
+
+private fun strings(value: Any?): MutableList<String> {
+    val list = value as? List<*> ?: return mutableListOf()
+    return list.mapNotNull { it as? String }.toMutableList()
+}
 
 fun execute(home: HomeState, call: FunctionCall): String {
     val a = call.arguments
@@ -96,6 +106,14 @@ fun execute(home: HomeState, call: FunctionCall): String {
             home.phone.wifi = a["on"] as Boolean
             "wifi ${home.phone.wifi}"
         }
+        "set_bluetooth" -> {
+            home.phone.bluetooth = a["on"] as Boolean
+            "bluetooth ${home.phone.bluetooth}"
+        }
+        "set_airplane" -> {
+            home.phone.airplane = a["on"] as Boolean
+            "airplane ${home.phone.airplane}"
+        }
         "flash_torch" -> {
             home.phone.torch = a["on"] as Boolean
             "torch ${home.phone.torch}"
@@ -114,16 +132,30 @@ fun execute(home: HomeState, call: FunctionCall): String {
             home.phone.nowPlaying = if (action == "skip") "Next track" else home.phone.nowPlaying ?: "Queue"
             "$action ${home.phone.nowPlaying}"
         }
+        "play_query" -> {
+            val query = a["query"] as String
+            home.phone.playing = true
+            home.phone.nowPlaying = query
+            "play $query"
+        }
         "start_navigation" -> {
             home.phone.navActive = true
+            home.phone.navOrigin = a["origin"] as? String ?: ""
             home.phone.navDestination = a["destination"] as String
+            home.phone.navWaypoints = strings(a["waypoints"])
             home.phone.navMode = (a["mode"] as? String) ?: "driving"
-            "navigate ${home.phone.navMode} to ${home.phone.navDestination}"
+            home.phone.navAvoid = strings(a["avoid"])
+            val via = if (home.phone.navWaypoints.isEmpty()) "" else " via ${home.phone.navWaypoints.joinToString(" → ")}"
+            val from = if (home.phone.navOrigin.isBlank()) "" else "${home.phone.navOrigin} → "
+            "route ${home.phone.navMode} $from${home.phone.navDestination}$via"
         }
         "stop_navigation" -> {
             home.phone.navActive = false
+            home.phone.navOrigin = ""
             home.phone.navDestination = null
+            home.phone.navWaypoints = mutableListOf()
             home.phone.navMode = "driving"
+            home.phone.navAvoid = mutableListOf()
             "navigation stopped"
         }
         "create_note" -> {
@@ -140,6 +172,16 @@ fun execute(home: HomeState, call: FunctionCall): String {
             val expr = (a["expression"] as String).filter { it.isDigit() || it in ".+-*/() " }
             "calc $expr"
         }
+        "open_settings" -> "settings ${a["panel"]}"
+        "open_app" -> "open ${a["label"] ?: a["app"]}"
+        "dial_phone" -> "dial ${a["number"]}"
+        "send_sms" -> "sms ${a["number"]}"
+        "send_email" -> "email ${a["to"]}"
+        "web_search" -> "search ${a["query"]}"
+        "maps_search" -> "maps ${a["query"]}"
+        "open_url" -> "url ${a["url"]}"
+        "add_event" -> "event ${a["title"]}"
+        "copy_text" -> "copied"
         else -> "unknown tool"
     }
 }

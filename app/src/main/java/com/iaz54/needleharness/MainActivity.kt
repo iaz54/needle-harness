@@ -1,8 +1,5 @@
 package com.iaz54.needleharness
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -63,41 +60,6 @@ private val Execute = Color(0xFF6EE7A8)
 private val Confirm = Color(0xFFC4B7A1)
 private val Paper = Color(0xFFD7DDD8)
 
-private fun modeLetter(mode: String) = when (mode) {
-    "walking" -> "w"
-    "bicycling" -> "b"
-    "transit" -> "r"
-    else -> "d"
-}
-
-private fun launchMaps(context: android.content.Context, destination: String, mode: String) {
-    val encoded = Uri.encode(destination)
-    val nav = Uri.parse("google.navigation:q=$encoded&mode=${modeLetter(mode)}")
-    val maps = Intent(Intent.ACTION_VIEW, nav).apply {
-        setPackage("com.google.android.apps.maps")
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    try {
-        context.startActivity(maps)
-        return
-    } catch (_: ActivityNotFoundException) {
-        // fall through
-    }
-    val web = Uri.parse(
-        "https://www.google.com/maps/dir/?api=1&destination=$encoded&travelmode=$mode",
-    )
-    context.startActivity(Intent(Intent.ACTION_VIEW, web).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-}
-
-private fun maybeLaunchNav(context: android.content.Context, calls: List<FunctionCall>) {
-    for (call in calls) {
-        if (call.name != "start_navigation") continue
-        val dest = call.arguments["destination"] as? String ?: continue
-        val mode = call.arguments["mode"] as? String ?: "driving"
-        launchMaps(context, dest, mode)
-    }
-}
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,7 +83,7 @@ fun LatchApp() {
         val msgs = calls.map { execute(home, it) }
         home = bump(home)
         log = listOf("EXECUTE · ${msgs.joinToString(" → ")}") + log
-        maybeLaunchNav(context, calls)
+        SystemActions.dispatch(context, calls)
     }
 
     fun run(text: String) {
@@ -182,7 +144,7 @@ fun LatchApp() {
             value = input,
             onValueChange = { input = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("navigate to the airport…", color = Muted) },
+            placeholder = { Text("drive from home to JFK via the pharmacy…", color = Muted) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { if (input.isNotBlank()) run(input) }),
@@ -218,9 +180,9 @@ fun LatchApp() {
 @Composable
 private fun SampleChips(onRun: (String) -> Unit) {
     val samples = listOf(
-        "navigate to the airport",
-        "take me home",
+        "drive from home to JFK via a gas station and the pharmacy, avoid tolls",
         "walk to the grocery store",
+        "open wifi settings and turn on do not disturb",
         "turn on the fan, set temperature to 10°, turn on bedroom light",
     )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -244,7 +206,7 @@ private fun NavBanner(home: HomeState) {
     val dest = home.phone.navDestination
     if (!home.phone.navActive || dest.isNullOrBlank()) {
         Text(
-            "Say “navigate to the airport” — Latch opens Maps on this phone.",
+            "Say a full route — origin, stops, destination. Latch opens it in Google Maps.",
             color = Muted,
             fontSize = 13.sp,
         )
@@ -260,11 +222,29 @@ private fun NavBanner(home: HomeState) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("NAVIGATING  ·  ${home.phone.navMode.uppercase()}", color = Execute, fontFamily = FontFamily.Monospace, fontSize = 11.sp, letterSpacing = 2.sp)
+        if (home.phone.navOrigin.isNotBlank()) {
+            Text(home.phone.navOrigin, color = Muted, fontSize = 13.sp)
+        }
+        home.phone.navWaypoints.forEach { stop ->
+            Text(stop, color = Muted, fontSize = 13.sp)
+        }
         Text(dest, color = Fg, fontSize = 18.sp)
+        if (home.phone.navAvoid.isNotEmpty()) {
+            Text("avoid ${home.phone.navAvoid.joinToString(", ")}", color = Muted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+        }
         Button(
-            onClick = { launchMaps(context, dest, home.phone.navMode) },
+            onClick = {
+                SystemActions.launchRoute(
+                    context,
+                    home.phone.navOrigin,
+                    dest,
+                    home.phone.navWaypoints,
+                    home.phone.navMode,
+                    home.phone.navAvoid,
+                )
+            },
             colors = ButtonDefaults.buttonColors(containerColor = Execute, contentColor = Ink),
-        ) { Text("Open in Maps") }
+        ) { Text("Open full route") }
     }
 }
 

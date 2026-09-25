@@ -32,6 +32,12 @@ private val ROOMS = mapOf(
     "garage" to "garage", "garage door" to "garage",
 )
 
+private val APPS = listOf(
+    "play store", "spotify", "youtube", "camera", "chrome", "gmail", "messages",
+    "calendar", "clock", "photos", "whatsapp", "instagram", "calculator", "files",
+    "settings", "phone", "maps",
+)
+
 private val TOOLS = listOf(
     ToolSpec("set_lights", listOf(Regex("\\b(lights?|lamp|bulbs?)\\b", RegexOption.IGNORE_CASE), Regex("\\b(dim|brighten)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("set_fan", listOf(Regex("\\bfan\\b", RegexOption.IGNORE_CASE))),
@@ -41,43 +47,31 @@ private val TOOLS = listOf(
     ToolSpec("set_brightness", listOf(Regex("\\b(screen brightness|display brightness)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("set_dnd", listOf(Regex("\\b(do not disturb|don't disturb|\\bdnd\\b)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("set_wifi", listOf(Regex("\\b(wi-?fi|wlan)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("set_bluetooth", listOf(Regex("\\bbluetooth\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("set_airplane", listOf(Regex("\\b(airplane|aeroplane) mode\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("flash_torch", listOf(Regex("\\b(flashlight|torch)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("set_alarm", listOf(Regex("\\balarm\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("start_timer", listOf(Regex("\\btimer\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("play_query", listOf(Regex("\\bplay\\s+\\S", RegexOption.IGNORE_CASE))),
     ToolSpec("play_media", listOf(Regex("\\b(play|pause|skip|resume)\\b", RegexOption.IGNORE_CASE))),
-    ToolSpec("start_navigation", listOf(Regex("\\b(navigate|navigation|directions|take me|drive to|walk to|nav to|route to)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("start_navigation", listOf(Regex("\\b(navigate|navigation|directions|take me|drive to|walk to|bike to|nav to|route to|via|from)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("stop_navigation", listOf(Regex("\\b(stop navigation|cancel route|end navigation|stop navigating)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("open_settings", listOf(Regex("\\bsettings\\b|\\bopen bluetooth\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("open_app", listOf(Regex("\\b(open|launch|start)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("dial_phone", listOf(Regex("\\b(call|dial)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("send_sms", listOf(Regex("\\b(text|sms|message)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("send_email", listOf(Regex("\\b(email|e-mail)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("maps_search", listOf(Regex("\\b(near me|nearby|around me|on maps)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("web_search", listOf(Regex("\\b(search|google|look up)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("open_url", listOf(Regex("https?://", RegexOption.IGNORE_CASE))),
+    ToolSpec("add_event", listOf(Regex("\\b(event|meeting|appointment)\\b", RegexOption.IGNORE_CASE))),
+    ToolSpec("copy_text", listOf(Regex("\\b(copy|clipboard)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("create_note", listOf(Regex("\\b(note|memo|remember)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("get_weather", listOf(Regex("\\b(weather|forecast)\\b", RegexOption.IGNORE_CASE))),
     ToolSpec("calculate", listOf(Regex("\\b(calculate|compute|what is \\d)", RegexOption.IGNORE_CASE))),
 )
 
 private val STOP_NAV = Regex("\\b(?:stop|cancel|end|quit)\\s+(?:the\\s+)?(?:nav|navigation|route|directions|trip)\\b|\\bstop navigating\\b", RegexOption.IGNORE_CASE)
-private val START_NAV = Regex("(?:navigate(?:\\s+me)?(?:\\s+to)?|start(?:ing)?\\s+nav(?:igation)?(?:\\s+to)?|take me(?:\\s+to)?|directions(?:\\s+to)?|route(?:\\s+me)?(?:\\s+to)?|(?:drive|walk|bike)(?:\\s+me)?\\s+to|nav\\s+to)\\s+(.+)", RegexOption.IGNORE_CASE)
-
-private fun parseMode(text: String): String {
-    val t = text.lowercase()
-    if (Regex("\\b(walk|walking|on foot)\\b").containsMatchIn(t)) return "walking"
-    if (Regex("\\b(transit|bus|train|subway)\\b").containsMatchIn(t)) return "transit"
-    if (Regex("\\b(bike|biking|bicycl)").containsMatchIn(t)) return "bicycling"
-    return "driving"
-}
-
-private fun parseDestination(text: String): String? {
-    if (STOP_NAV.containsMatchIn(text)) return null
-    val raw = START_NAV.find(text)?.groupValues?.get(1)?.trim()?.trimEnd('.', '!', '?') ?: return null
-    val cleaned = raw.replace(Regex("\\s+(please|now)$", RegexOption.IGNORE_CASE), "").trim()
-    val aliases = mapOf(
-        "home" to "Home", "house" to "Home", "my house" to "Home", "my home" to "Home",
-        "work" to "Work", "office" to "Work", "the office" to "Work",
-        "airport" to "Airport", "the airport" to "Airport",
-        "downtown" to "Downtown",
-        "grocery" to "grocery store", "the grocery" to "grocery store", "grocery store" to "grocery store",
-        "gas station" to "gas station", "the gas station" to "gas station",
-    )
-    val dest = aliases[cleaned.lowercase()] ?: cleaned
-    return dest.takeIf { it.length >= 2 }
-}
 
 private fun findRoom(text: String): String? {
     val lower = text.lowercase()
@@ -119,10 +113,28 @@ private fun timeIn(text: String): String? {
     return null
 }
 
-private fun splitClauses(text: String): List<String> {
-    val parts = text.split(Regex("\\s*(?:,|;|\\band then\\b|\\bthen\\b|\\band\\b)\\s*", RegexOption.IGNORE_CASE))
-        .map { it.trim() }.filter { it.isNotEmpty() }
-    return parts.ifEmpty { listOf(text.trim()) }
+private fun settingsPanel(clause: String): String? {
+    if (Regex("\\bopen bluetooth\\b", RegexOption.IGNORE_CASE).containsMatchIn(clause)) return "bluetooth"
+    if (!Regex("\\bsettings\\b", RegexOption.IGNORE_CASE).containsMatchIn(clause)) return null
+    val pairs = listOf(
+        Regex("\\bwi-?fi\\b.*\\bsettings\\b|\\bsettings\\b.*\\bwi-?fi\\b", RegexOption.IGNORE_CASE) to "wifi",
+        Regex("\\bbluetooth\\b.*\\bsettings\\b|\\bsettings\\b.*\\bbluetooth\\b", RegexOption.IGNORE_CASE) to "bluetooth",
+        Regex("\\b(?:location|gps)\\b.*\\bsettings\\b|\\bsettings\\b.*\\b(?:location|gps)\\b", RegexOption.IGNORE_CASE) to "location",
+        Regex("\\b(?:sound|volume)\\b.*\\bsettings\\b|\\bsettings\\b.*\\b(?:sound|volume)\\b", RegexOption.IGNORE_CASE) to "sound",
+        Regex("\\b(?:display|brightness)\\b.*\\bsettings\\b|\\bsettings\\b.*\\b(?:display|brightness)\\b", RegexOption.IGNORE_CASE) to "display",
+        Regex("\\b(?:airplane|aeroplane)\\b.*\\bsettings\\b|\\bsettings\\b.*\\b(?:airplane|aeroplane)\\b", RegexOption.IGNORE_CASE) to "airplane",
+        Regex("\\bnfc\\b.*\\bsettings\\b|\\bsettings\\b.*\\bnfc\\b", RegexOption.IGNORE_CASE) to "nfc",
+        Regex("\\bbattery\\b.*\\bsettings\\b|\\bsettings\\b.*\\bbattery\\b", RegexOption.IGNORE_CASE) to "battery",
+        Regex("\\bnotification\\b.*\\bsettings\\b|\\bsettings\\b.*\\bnotification\\b", RegexOption.IGNORE_CASE) to "notifications",
+        Regex("\\b(?:date|time)\\b.*\\bsettings\\b|\\bsettings\\b.*\\b(?:date|time)\\b", RegexOption.IGNORE_CASE) to "date",
+        Regex("\\b(?:apps?|application)\\b.*\\bsettings\\b|\\bsettings\\b.*\\b(?:apps?|application)\\b", RegexOption.IGNORE_CASE) to "apps",
+    )
+    return pairs.firstOrNull { it.first.containsMatchIn(clause) }?.second ?: "settings"
+}
+
+private fun matchApp(clause: String): String? {
+    if (!Regex("\\b(?:open|launch|start)\\b", RegexOption.IGNORE_CASE).containsMatchIn(clause)) return null
+    return APPS.firstOrNull { Regex("\\b${Regex.escape(it)}\\b", RegexOption.IGNORE_CASE).containsMatchIn(clause) }
 }
 
 private fun fill(tool: ToolSpec, clause: String, layer: Int): FunctionCall? {
@@ -166,32 +178,94 @@ private fun fill(tool: ToolSpec, clause: String, layer: Int): FunctionCall? {
             numberIn(clause, 0, 100)?.let { FunctionCall(tool.name, mapOf("level" to it)) } else null
         "set_dnd" -> if (Regex("do not disturb|don't disturb|\\bdnd\\b").containsMatchIn(t))
             FunctionCall(tool.name, mapOf("on" to (boolOnOff(clause) ?: true))) else null
-        "set_wifi" -> if (Regex("wi-?fi|wlan").containsMatchIn(t))
+        "set_wifi" -> if (Regex("wi-?fi|wlan").containsMatchIn(t) && !t.contains("settings"))
+            FunctionCall(tool.name, mapOf("on" to (boolOnOff(clause) ?: true))) else null
+        "set_bluetooth" -> if (Regex("\\bbluetooth\\b").containsMatchIn(t) && !t.contains("settings") && Regex("\\b(on|off|enable|disable|turn)\\b").containsMatchIn(t))
+            FunctionCall(tool.name, mapOf("on" to (boolOnOff(clause) ?: true))) else null
+        "set_airplane" -> if (Regex("airplane|aeroplane").containsMatchIn(t) && !t.contains("settings"))
             FunctionCall(tool.name, mapOf("on" to (boolOnOff(clause) ?: true))) else null
         "flash_torch" -> if (Regex("flashlight|torch").containsMatchIn(t))
             FunctionCall(tool.name, mapOf("on" to (boolOnOff(clause) ?: true))) else null
         "set_alarm" -> if ("alarm" in t) timeIn(clause)?.let { FunctionCall(tool.name, mapOf("time" to it)) } else null
         "start_timer" -> if ("timer" in t) numberIn(clause, 1, 180)?.let { FunctionCall(tool.name, mapOf("minutes" to it)) } else null
+        "play_query" -> {
+            val q = Regex("""^play\s+(.+)$""", RegexOption.IGNORE_CASE).find(clause.trim())?.groupValues?.get(1)?.trim()
+            if (q != null && q.length >= 3 && !Regex("pause|skip|resume").containsMatchIn(t)) {
+                FunctionCall(tool.name, mapOf("query" to q))
+            } else null
+        }
         "play_media" -> when {
+            Regex("""^play\s+\S.{2,}""").containsMatchIn(clause.trim()) && !Regex("pause|skip|resume").containsMatchIn(t) -> null
             "skip" in t -> FunctionCall(tool.name, mapOf("action" to "skip"))
             "pause" in t -> FunctionCall(tool.name, mapOf("action" to "pause"))
             Regex("play|resume").containsMatchIn(t) -> FunctionCall(tool.name, mapOf("action" to "play"))
             else -> null
         }
         "start_navigation" -> {
-            if (STOP_NAV.containsMatchIn(clause)) return null
-            val dest = parseDestination(clause) ?: return null
-            FunctionCall(tool.name, mapOf("destination" to dest, "mode" to parseMode(clause)))
+            val plan = RouteText.parse(clause) ?: return null
+            FunctionCall(
+                tool.name,
+                mapOf(
+                    "origin" to plan.origin,
+                    "destination" to plan.destination,
+                    "waypoints" to plan.waypoints,
+                    "mode" to plan.mode,
+                    "avoid" to plan.avoid,
+                ),
+            )
         }
-        "stop_navigation" -> if (STOP_NAV.containsMatchIn(clause)) FunctionCall(tool.name, emptyMap()) else null
-        "create_note" -> if (Regex("note|memo|remember").containsMatchIn(t))
+        "stop_navigation" -> if (STOP_NAV.containsMatchIn(clause) && RouteText.parse(clause) == null) FunctionCall(tool.name, emptyMap()) else null
+        "open_settings" -> settingsPanel(clause)?.let { FunctionCall(tool.name, mapOf("panel" to it)) }
+        "open_app" -> {
+            if (settingsPanel(clause) != null) return null
+            val app = matchApp(clause) ?: return null
+            FunctionCall(tool.name, mapOf("app" to app, "label" to app.replaceFirstChar { it.uppercase() }))
+        }
+        "dial_phone" -> {
+            val m = Regex("""\b(?:call|dial|phone)\s+([+]?\d[\d\s().-]{2,}|\w[\w\s]{0,32})""", RegexOption.IGNORE_CASE).find(clause)
+            if (m == null || Regex("phone settings", RegexOption.IGNORE_CASE).containsMatchIn(clause)) null
+            else FunctionCall(tool.name, mapOf("number" to m.groupValues[1].trim()))
+        }
+        "send_sms" -> {
+            val m = Regex(
+                """\b(?:text|sms|message)\s+([+]?\d[\d\s().-]{4,}|[A-Za-z][\w\s]{1,24}?)(?:\s+(?:saying|that|:|-)\s+(.+))?$""",
+                RegexOption.IGNORE_CASE,
+            ).find(clause)
+            if (m == null) null else FunctionCall(tool.name, mapOf("number" to m.groupValues[1].trim(), "body" to m.groupValues[2].trim()))
+        }
+        "send_email" -> {
+            val m = Regex("""\b(?:email|e-mail)\s+(\S+@\S+)(?:\s+(?:about|saying|that|:)\s+(.+))?$""", RegexOption.IGNORE_CASE).find(clause)
+            if (m == null) null else FunctionCall(tool.name, mapOf("to" to m.groupValues[1], "subject" to m.groupValues[2].ifBlank { "Note from Latch" }.take(80), "body" to m.groupValues[2]))
+        }
+        "maps_search" -> {
+            if (!Regex("""\b(?:near me|around me|nearby|on maps|in maps|find|search maps)\b""", RegexOption.IGNORE_CASE).containsMatchIn(clause)) return null
+            val q = clause
+                .replace(Regex("""\b(?:find|search maps for|search for|look for|look up)\b""", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("""\b(?:near me|around me|nearby|on maps|in maps)\b""", RegexOption.IGNORE_CASE), "")
+                .trim()
+            if (q.length < 2) null else FunctionCall(tool.name, mapOf("query" to q))
+        }
+        "web_search" -> {
+            if (Regex("""\b(?:near me|around me|nearby|on maps)\b""", RegexOption.IGNORE_CASE).containsMatchIn(clause)) return null
+            val q = Regex("""\b(?:search|google|look up)\s+(?:for\s+|the web for\s+)?(.+)$""", RegexOption.IGNORE_CASE).find(clause)?.groupValues?.get(1)?.trim()
+            if (q.isNullOrBlank() || q.length < 2) null else FunctionCall(tool.name, mapOf("query" to q))
+        }
+        "open_url" -> Regex("""\b(?:open|go to)\s+(https?://\S+)""", RegexOption.IGNORE_CASE).find(clause)?.groupValues?.get(1)?.let {
+            FunctionCall(tool.name, mapOf("url" to it))
+        }
+        "add_event" -> Regex("""\b(?:add|create|schedule)\s+(?:a\s+)?(?:calendar\s+)?(?:event|meeting|appointment)\s+(.+)$""", RegexOption.IGNORE_CASE).find(clause)?.groupValues?.get(1)?.let {
+            FunctionCall(tool.name, mapOf("title" to it.trim(), "time" to (timeIn(clause) ?: "")))
+        }
+        "copy_text" -> if (Regex("copy|clipboard").containsMatchIn(t)) {
+            val text = clause.replace(Regex("""\b(?:copy|to my clipboard|clipboard)\b""", RegexOption.IGNORE_CASE), "").trim()
+            if (text.isEmpty()) null else FunctionCall(tool.name, mapOf("text" to text))
+        } else null
+        "create_note" -> if (Regex("note|memo|remember").containsMatchIn(t) && RouteText.parse(clause) == null)
             FunctionCall(tool.name, mapOf("title" to clause.trim(), "body" to clause)) else null
         "get_weather" -> {
             if (!Regex("weather|forecast").containsMatchIn(t)) return null
-            val city = Regex("\\b(?:in|for|at)\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)", RegexOption.IGNORE_CASE)
-                .find(clause)?.groupValues?.get(1)
-                ?: Regex("\\b(Lagos|London|Paris|Tokyo|Columbus|Berlin)\\b", RegexOption.IGNORE_CASE).find(clause)?.value
-                ?: return null
+            val city = Regex("\\b(?:in|for|at)\\s+([A-Za-z][a-z]+(?:\\s+[A-Za-z][a-z]+)?)", RegexOption.IGNORE_CASE)
+                .find(clause)?.groupValues?.get(1) ?: "New York"
             FunctionCall(tool.name, mapOf("city" to city))
         }
         "calculate" -> Regex("(?:calculate|compute|what(?:'| i)?s)\\s+([\\d.+\\-*/() ]+)", RegexOption.IGNORE_CASE)
@@ -221,14 +295,15 @@ object NeedleEngine {
         val bits = mutableListOf<String>()
         var triggered = false
         var confAcc = 0.0
-        for (clause in splitClauses(raw)) {
+        for (clause in RouteText.split(raw)) {
             if (calls.size >= ladderCap(depth)) break
             var best: Triple<ToolSpec, FunctionCall, Double>? = null
             var bestTrig = false
             for (tool in TOOLS) {
                 val trig = tool.triggers.any { it.containsMatchIn(clause) }
                 val call = fill(tool, clause, depth) ?: continue
-                val score = (if (trig) 0.9 else 0.62) + 0.08
+                val bonus = if (tool.name == "start_navigation") 0.12 else if (tool.name == "open_settings" || tool.name == "maps_search" || tool.name == "dial_phone") 0.04 else 0.0
+                val score = (if (trig) 0.9 else 0.62) + 0.08 + bonus
                 if (best == null || score > best.third) {
                     best = Triple(tool, call, score)
                     bestTrig = trig
