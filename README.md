@@ -42,6 +42,18 @@ Phone actions that Android will not toggle silently hand off to the real system 
 
 House tiles still update for lights / fan / locks.
 
+
+## Web console
+
+`web/` is the same deck in a browser: full routes, saved places, and Android intent handoffs.
+
+```
+cd web
+npm install
+npm test
+npm run dev
+```
+
 ## Build locally
 
 Android Studio Ladybug / AGP 8.7, JDK 17:

@@ -10,3 +10,6 @@
 !dist/*.apk
 *.ap_
 *.dex
+
+web/node_modules
+web/dist
