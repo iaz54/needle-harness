@@ -332,7 +332,7 @@ export function LatchApp() {
               </button>
             </div>
             {draft.optimize ? (
-              <p className="text-sm text-muted">Maps reorders the stops between the start and the end.</p>
+              <p className="text-sm text-muted">Every stop is entered, in the order you said.</p>
             ) : null}
             {draft.waypoints.length > 9 ? (
               <p className="text-sm text-confirm">Maps keeps the first nine stops.</p>

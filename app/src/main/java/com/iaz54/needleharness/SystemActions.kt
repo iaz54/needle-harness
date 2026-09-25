@@ -122,15 +122,17 @@ object SystemActions {
     }
 
     private fun mapsUrl(origin: String, destination: String, waypoints: List<String>, mode: String, avoid: List<String>, optimize: Boolean): String {
-        val stops = waypoints.filter { it.isNotBlank() }
-        if (optimize && stops.isNotEmpty()) {
-            val parts = mutableListOf("api=1", "destination=${Uri.encode(destination)}", "travelmode=$mode")
-            if (origin.isNotBlank()) parts += "origin=${Uri.encode(origin)}"
-            if (avoid.isNotEmpty()) parts += "avoid=${avoid.joinToString("|")}"
-            parts += "waypoints=optimize:true|${stops.joinToString("|") { Uri.encode(it) }}"
-            return "https://www.google.com/maps/dir/?${parts.joinToString("&")}"
+        val places = buildList {
+            if (origin.isNotBlank()) add(origin)
+            addAll(waypoints.filter { it.isNotBlank() })
+            if (destination.isNotBlank()) add(destination)
         }
-        val chain = (stops + destination).joinToString("+to:") { Uri.encode(it) }
+        if (places.size >= 2) {
+            val path = places.joinToString("/") { Uri.encode(it) }
+            val avoidQ = if (avoid.isEmpty()) "" else "&avoid=${Uri.encode(avoid.joinToString("|"))}"
+            return "https://www.google.com/maps/dir/$path?travelmode=$mode$avoidQ"
+        }
+        val chain = (waypoints.filter { it.isNotBlank() } + destination).joinToString("+to:") { Uri.encode(it) }
         val saddr = if (origin.isBlank()) "" else "&saddr=${Uri.encode(origin)}"
         return "https://maps.google.com/maps?f=d$saddr&daddr=$chain&dirflg=${avoidLetters(avoid)}${modeLetter(mode)}"
     }

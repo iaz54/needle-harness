@@ -1,6 +1,6 @@
 import { appCatalog, type FunctionCall } from "./engine";
 import type { RouteArgs } from "./engine";
-import { androidDirectionsUrl, androidMapsIntent, buildMapsUrl, mapsSearchUrl, type SavedPlace } from "@/lib/maps";
+import { androidDirectionsUrl, androidMapsIntent, buildMapsUrl, mapsSearchUrl, type SavedPlace } from "./maps";
 
 export type Handoff = {
   title: string;

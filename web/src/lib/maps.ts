@@ -33,15 +33,13 @@ function avoidLetters(avoid: AvoidFlag[]) {
   return avoid.map((flag) => (flag === "tolls" ? "t" : flag === "highways" ? "h" : "f")).join("");
 }
 
-function optimizedUrl(origin: string, destination: string, waypoints: string[], route: RouteArgs) {
+function routePath(origin: string, destination: string, waypoints: string[], route: RouteArgs) {
+  const ordered = [origin, ...waypoints, destination].filter(Boolean);
+  const path = ordered.map((stop) => encodeURIComponent(stop)).join("/");
   const query = new URLSearchParams();
-  query.set("api", "1");
-  if (origin) query.set("origin", origin);
-  query.set("destination", destination);
   query.set("travelmode", route.mode);
   if (route.avoid.length) query.set("avoid", route.avoid.join("|"));
-  const stops = waypoints.map((stop) => encodeURIComponent(stop)).join("|");
-  return `https://www.google.com/maps/dir/?${query.toString()}&waypoints=optimize:true|${stops}`;
+  return `https://www.google.com/maps/dir/${path}?${query.toString()}`;
 }
 
 function stopsOf(route: RouteArgs, places: SavedPlace[]) {
@@ -56,15 +54,8 @@ function stopsOf(route: RouteArgs, places: SavedPlace[]) {
 
 export function buildMapsUrl(route: RouteArgs, places: SavedPlace[]) {
   const { origin, destination, waypoints } = stopsOf(route, places);
-  if (route.optimize && waypoints.length) return optimizedUrl(origin, destination, waypoints, route);
   const ordered = [origin, ...waypoints, destination].filter(Boolean);
-  if (ordered.length >= 2) {
-    const path = ordered.map((stop) => encodeURIComponent(stop)).join("/");
-    const query = new URLSearchParams();
-    query.set("travelmode", route.mode);
-    if (route.avoid.length) query.set("avoid", route.avoid.join("|"));
-    return `https://www.google.com/maps/dir/${path}?${query.toString()}`;
-  }
+  if (ordered.length >= 2) return routePath(origin, destination, waypoints, route);
   const query = new URLSearchParams();
   query.set("api", "1");
   query.set("destination", destination);
@@ -77,15 +68,12 @@ export function buildMapsUrl(route: RouteArgs, places: SavedPlace[]) {
 /** Phone Maps fills one destination box unless stops are chained with +to:. */
 export function androidDirectionsUrl(route: RouteArgs, places: SavedPlace[]) {
   const { origin, destination, waypoints } = stopsOf(route, places);
-  if (route.optimize && waypoints.length) return optimizedUrl(origin, destination, waypoints, route);
   const chain = [...waypoints, destination].filter(Boolean);
   if (chain.length <= 1 && !origin) {
     const avoid = avoidLetters(route.avoid);
     return `google.navigation:q=${encodeURIComponent(destination)}&mode=${modeLetter(route.mode)}${avoid ? `&avoid=${avoid}` : ""}`;
   }
-  const daddr = chain.map((stop) => encodeURIComponent(stop)).join("+to:");
-  const saddr = origin ? `&saddr=${encodeURIComponent(origin)}` : "";
-  return `https://maps.google.com/maps?f=d${saddr}&daddr=${daddr}&dirflg=${avoidLetters(route.avoid)}${modeLetter(route.mode)}`;
+  return routePath(origin, destination, waypoints, route);
 }
 
 export function mapsSearchUrl(query: string) {

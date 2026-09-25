@@ -10,13 +10,13 @@ Latch is the code *around* the model:
 4. **Loop** — `complete()` → gate → mutate → verify
 5. **Gates** — confidence ≥ 0.72 auto-executes, middling asks, empty list refuses (never guesses a tool)
 
-v1.1.2 understands a spoken chain. “Give me the most efficient route from Walmart to Eagle to Aldi to Taco Bell” is four stops. “Most efficient” asks Maps to reorder the middle stops. Otherwise the order you said is kept, and every stop is entered.
+v1.1.3 takes a normal sentence. “Hey, give me the most efficient route from Walmart to Eagle to Aldi to Taco Bell” is four stops, and Maps is opened with each one filled in: Walmart, then Eagle, then Aldi, then Taco Bell.
 
 Sibling project: private [`iaz54/jevharness`](https://github.com/iaz54/jevharness) (AccessibilityService + TypeSafe Jev). Latch is the tool-calling rung. JevHarness is the UI-control rung.
 
 ## Install the APK
 
-**[Download Latch-1.1.2.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.1.2.apk)** — debug-signed, Android 8+. Reinstall over 1.1.1. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
+**[Download Latch-1.1.3.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.1.3.apk)** — debug-signed, Android 8+. Reinstall over 1.1.2. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
 
 On the phone: allow unknown sources. If Chrome says the file is uncommon, tap Keep, then Install.
 
@@ -37,7 +37,7 @@ find late night pizza near me
 turn on the fan, set temperature to 10°, turn on bedroom light
 ```
 
-Navigation fills every stop in Google Maps. “A to B to C to D” stays in that order. “Most efficient” lets Maps reorder the stops between the first and last place. A single destination still starts turn-by-turn.
+Navigation fills every stop in Google Maps, in the order you said. “Hey, give me the most efficient route from Walmart to Eagle to Aldi to Taco Bell” opens Walmart → Eagle → Aldi → Taco Bell. A single destination still starts turn-by-turn.
 
 Phone actions that Android will not toggle silently hand off to the real system surface: Wi-Fi, Bluetooth, airplane mode, Do Not Disturb, display, sound (volume is applied on the music stream), alarms, timers, dialer, SMS, email, calendar, and launching installed apps.
 
