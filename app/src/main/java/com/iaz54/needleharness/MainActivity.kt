@@ -181,6 +181,7 @@ fun LatchApp() {
 private fun SampleChips(onRun: (String) -> Unit) {
     val samples = listOf(
         "drive from home to JFK via a gas station and the pharmacy, avoid tolls",
+        "give me the most efficient route from walmart to eagle to aldi to taco bell",
         "walk to the grocery store",
         "open wifi settings and turn on do not disturb",
         "turn on the fan, set temperature to 10°, turn on bedroom light",
@@ -241,6 +242,7 @@ private fun NavBanner(home: HomeState) {
                     home.phone.navWaypoints,
                     home.phone.navMode,
                     home.phone.navAvoid,
+                    home.phone.navOptimize,
                 )
             },
             colors = ButtonDefaults.buttonColors(containerColor = Execute, contentColor = Ink),

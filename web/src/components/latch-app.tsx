@@ -20,6 +20,7 @@ import { cn } from "../lib/cn";
 
 const SAMPLES = [
   "drive from home to JFK via a gas station and the pharmacy, avoid tolls",
+  "give me the most efficient route from walmart to eagle to aldi to taco bell",
   "walk from Washington Square to the Brooklyn Bridge via the High Line",
   "transit from Penn Station to the Met then Central Park",
   "take me home",
@@ -330,6 +331,9 @@ export function LatchApp() {
                 {copied ? "Copied" : "Copy link"}
               </button>
             </div>
+            {draft.optimize ? (
+              <p className="text-sm text-muted">Maps reorders the stops between the start and the end.</p>
+            ) : null}
             {draft.waypoints.length > 9 ? (
               <p className="text-sm text-confirm">Maps keeps the first nine stops.</p>
             ) : null}

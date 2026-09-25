@@ -1,6 +1,6 @@
 import { appCatalog, type FunctionCall } from "./engine";
 import type { RouteArgs } from "./engine";
-import { androidDirectionsUrl, androidMapsIntent, buildMapsUrl, mapsSearchUrl, type SavedPlace } from "./maps";
+import { androidDirectionsUrl, androidMapsIntent, buildMapsUrl, mapsSearchUrl, type SavedPlace } from "@/lib/maps";
 
 export type Handoff = {
   title: string;
@@ -60,6 +60,7 @@ export function routeFromCall(call: FunctionCall): RouteArgs {
     avoid: list(a.avoid).filter(
       (x): x is RouteArgs["avoid"][number] => x === "tolls" || x === "highways" || x === "ferries",
     ),
+    optimize: a.optimize === true,
   };
 }
 
@@ -73,9 +74,10 @@ export function handoffFor(call: FunctionCall, places: SavedPlace[]): Handoff | 
       const href = buildMapsUrl(route, places);
       const native = androidDirectionsUrl(route, places);
       const stops = route.waypoints.length ? `${route.waypoints.length} stop${route.waypoints.length === 1 ? "" : "s"} · ` : "";
+      const order = route.optimize ? "optimized · " : "";
       return {
         title: "Open full route in Google Maps",
-        detail: `${stops}${route.mode}${route.avoid.length ? ` · avoid ${route.avoid.join(", ")}` : ""}`,
+        detail: `${order}${stops}${route.mode}${route.avoid.length ? ` · avoid ${route.avoid.join(", ")}` : ""}`,
         href,
         androidHref: native.startsWith("google.navigation:") ? native : androidMapsIntent(native),
         kind: "web",

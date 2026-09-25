@@ -33,6 +33,17 @@ function avoidLetters(avoid: AvoidFlag[]) {
   return avoid.map((flag) => (flag === "tolls" ? "t" : flag === "highways" ? "h" : "f")).join("");
 }
 
+function optimizedUrl(origin: string, destination: string, waypoints: string[], route: RouteArgs) {
+  const query = new URLSearchParams();
+  query.set("api", "1");
+  if (origin) query.set("origin", origin);
+  query.set("destination", destination);
+  query.set("travelmode", route.mode);
+  if (route.avoid.length) query.set("avoid", route.avoid.join("|"));
+  const stops = waypoints.map((stop) => encodeURIComponent(stop)).join("|");
+  return `https://www.google.com/maps/dir/?${query.toString()}&waypoints=optimize:true|${stops}`;
+}
+
 function stopsOf(route: RouteArgs, places: SavedPlace[]) {
   const destination = expandPlace(route.destination, places);
   const origin = expandPlace(route.origin, places);
@@ -45,6 +56,7 @@ function stopsOf(route: RouteArgs, places: SavedPlace[]) {
 
 export function buildMapsUrl(route: RouteArgs, places: SavedPlace[]) {
   const { origin, destination, waypoints } = stopsOf(route, places);
+  if (route.optimize && waypoints.length) return optimizedUrl(origin, destination, waypoints, route);
   const ordered = [origin, ...waypoints, destination].filter(Boolean);
   if (ordered.length >= 2) {
     const path = ordered.map((stop) => encodeURIComponent(stop)).join("/");
@@ -65,6 +77,7 @@ export function buildMapsUrl(route: RouteArgs, places: SavedPlace[]) {
 /** Phone Maps fills one destination box unless stops are chained with +to:. */
 export function androidDirectionsUrl(route: RouteArgs, places: SavedPlace[]) {
   const { origin, destination, waypoints } = stopsOf(route, places);
+  if (route.optimize && waypoints.length) return optimizedUrl(origin, destination, waypoints, route);
   const chain = [...waypoints, destination].filter(Boolean);
   if (chain.length <= 1 && !origin) {
     const avoid = avoidLetters(route.avoid);
@@ -85,7 +98,7 @@ export function androidMapsIntent(httpsUrl: string) {
 }
 
 export function emptyRoute(): RouteArgs {
-  return { origin: "", destination: "", waypoints: [], mode: "driving", avoid: [] };
+  return { origin: "", destination: "", waypoints: [], mode: "driving", avoid: [], optimize: false };
 }
 
 export function routeReady(route: RouteArgs) {

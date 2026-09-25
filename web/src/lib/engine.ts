@@ -14,6 +14,7 @@ export type RouteArgs = {
   waypoints: string[];
   mode: TravelMode;
   avoid: AvoidFlag[];
+  optimize?: boolean;
 };
 
 export type CompleteResult = {
@@ -217,10 +218,29 @@ function parseAvoid(text: string): { avoid: AvoidFlag[]; rest: string } {
 
 function splitPlaces(s: string): string[] {
   return s
-    .split(/\s*(?:,|&|\+|\band then\b|\band\b|\bthen\b|\bplus\b|->|→)\s*/i)
+    .split(/\s*(?:,|&|\+|\band then\b|\band\b|\bthen\b|\bplus\b|\bto\b|->|→)\s*/i)
     .map((p) => p.replace(/^(?:(?:at|to|via|through|by|then|stop(?:ping)?(?:\s+at)?)\s+)+/i, "").trim())
     .map(aliasPlace)
     .filter((p) => p.length >= 2);
+}
+
+function wantsOptimize(text: string) {
+  return /\b(?:most efficient|efficient route|fastest|shortest|quickest|best order|optimi[sz]e)\b/i.test(text);
+}
+
+export function normalizeAsk(text: string) {
+  let s = text.trim();
+  let prev = "";
+  while (s && s !== prev) {
+    prev = s;
+    s = s
+      .replace(/^(?:hey|hi|hello|yo|ok|okay)\b[,\s!]*/i, "")
+      .replace(/^(?:please|kindly)\s+/i, "")
+      .replace(/^(?:can you|could you|would you|will you)\s+/i, "")
+      .replace(/^(?:give me|gimme|get me|find me|show me|i need|i want)\s+(?:the\s+)?/i, "")
+      .trim();
+  }
+  return s;
 }
 
 function hereOrigin(s: string) {
@@ -230,9 +250,20 @@ function hereOrigin(s: string) {
 }
 
 export function parseRoute(raw: string): RouteArgs | null {
-  if (STOP_NAV.test(raw) && !/\b(?:from|via|to)\b/i.test(raw)) return null;
-  const { avoid, rest } = parseAvoid(raw);
+  const spoken = normalizeAsk(raw);
+  if (!spoken) return null;
+  if (STOP_NAV.test(spoken) && !/\b(?:from|via|to)\b/i.test(spoken)) return null;
+  const { avoid, rest } = parseAvoid(spoken);
   const mode = parseMode(rest);
+  const optimize = wantsOptimize(raw);
+  const pack = (origin: string, destination: string, waypoints: string[]): RouteArgs => ({
+    origin,
+    destination,
+    waypoints: waypoints.slice(0, 9),
+    mode,
+    avoid,
+    optimize,
+  });
 
   const fromTo = rest.match(/\bfrom\s+(.+?)\s+to\s+(.+)$/i);
   if (fromTo) {
@@ -243,35 +274,20 @@ export function parseRoute(raw: string): RouteArgs | null {
     );
     if (via) {
       const destination = aliasPlace(via[1]);
-      const waypoints = splitPlaces(via[2]).slice(0, 9);
-      if (destination.length >= 2) return { origin, destination, waypoints, mode, avoid };
+      if (destination.length >= 2) return pack(origin, destination, splitPlaces(via[2] ?? ""));
     }
     const ordered = splitPlaces(tail);
     if (ordered.length >= 2) {
-      return {
-        origin,
-        destination: ordered[ordered.length - 1]!,
-        waypoints: ordered.slice(0, -1).slice(0, 9),
-        mode,
-        avoid,
-      };
+      return pack(origin, ordered[ordered.length - 1]!, ordered.slice(0, -1));
     }
-    if (ordered.length === 1) {
-      return { origin, destination: ordered[0]!, waypoints: [], mode, avoid };
-    }
+    if (ordered.length === 1) return pack(origin, ordered[0]!, []);
   }
 
   const onTheWay = rest.match(/\bstop(?:ping)?\s+at\s+(.+?)\s+on the way to\s+(.+)$/i);
   if (onTheWay) {
     const destination = aliasPlace(onTheWay[2] ?? "");
     if (destination.length >= 2) {
-      return {
-        origin: "",
-        destination,
-        waypoints: splitPlaces(onTheWay[1] ?? "").slice(0, 9),
-        mode,
-        avoid,
-      };
+      return pack("", destination, splitPlaces(onTheWay[1] ?? ""));
     }
   }
 
@@ -281,41 +297,21 @@ export function parseRoute(raw: string): RouteArgs | null {
   if (toVia) {
     const destination = aliasPlace(toVia[1] ?? "");
     if (destination.length >= 2) {
-      return {
-        origin: "",
-        destination,
-        waypoints: splitPlaces(toVia[2] ?? "").slice(0, 9),
-        mode,
-        avoid,
-      };
+      return pack("", destination, splitPlaces(toVia[2] ?? ""));
     }
   }
 
   const arrowBits = rest.split(/\s*(?:->|→)\s*/);
   if (arrowBits.length >= 2) {
     const places = arrowBits.map(aliasPlace).filter((p) => p.length >= 2);
-    if (places.length >= 2) {
-      return {
-        origin: places[0]!,
-        destination: places[places.length - 1]!,
-        waypoints: places.slice(1, -1).slice(0, 9),
-        mode,
-        avoid,
-      };
-    }
+    if (places.length >= 2) return pack(places[0]!, places[places.length - 1]!, places.slice(1, -1));
   }
 
   const listed = rest.match(/\b(?:route|trip|itinerary)\b\s*[:\-]?\s+(.+)$/i);
-  if (listed && /,| then | and |->|→/.test(listed[1] ?? "")) {
+  if (listed && /,| then | and | to |->|→/.test(listed[1] ?? "")) {
     const places = splitPlaces(listed[1] ?? "");
     if (places.length >= 2) {
-      return {
-        origin: places[0]!,
-        destination: places[places.length - 1]!,
-        waypoints: places.slice(1, -1).slice(0, 9),
-        mode,
-        avoid,
-      };
+      return pack(places[0]!, places[places.length - 1]!, places.slice(1, -1));
     }
   }
 
@@ -326,18 +322,10 @@ export function parseRoute(raw: string): RouteArgs | null {
   if (!start) return null;
   if (STOP_NAV.test(rest)) return null;
   const places = splitPlaces(start[1] ?? "");
-  if (places.length >= 2) {
-    return {
-      origin: "",
-      destination: places[places.length - 1]!,
-      waypoints: places.slice(0, -1).slice(0, 9),
-      mode,
-      avoid,
-    };
-  }
+  if (places.length >= 2) return pack("", places[places.length - 1]!, places.slice(0, -1));
   const destination = places[0] ?? "";
   if (destination.length < 2) return null;
-  return { origin: "", destination, waypoints: [], mode, avoid };
+  return pack("", destination, []);
 }
 
 function isCommandStart(s: string) {
@@ -371,7 +359,7 @@ function mergeAtoms(atoms: string[]) {
 }
 
 export function splitClauses(text: string): string[] {
-  const atoms = splitAtoms(text);
+  const atoms = splitAtoms(normalizeAsk(text));
   const merged = mergeAtoms(atoms);
   if (merged.length >= 2 && merged.every((a) => !isCommandStart(a))) {
     const asRoute = `route ${merged.join(", ")}`;
@@ -454,6 +442,7 @@ function fill(clause: string, layer: number) {
           waypoints: route.waypoints,
           mode: route.mode,
           avoid: route.avoid,
+          optimize: route.optimize === true,
         },
         0.99,
       ),

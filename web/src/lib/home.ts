@@ -29,6 +29,7 @@ export type PhoneState = {
   navWaypoints: string[];
   navMode: TravelMode;
   navAvoid: AvoidFlag[];
+  navOptimize: boolean;
 };
 
 export type Note = { title: string; body: string };
@@ -86,6 +87,7 @@ export function emptyHome(): HomeState {
       navWaypoints: [],
       navMode: "driving",
       navAvoid: [],
+      navOptimize: false,
     },
     notes: [
       { title: "Filter change", body: "Kitchen fridge water filter due next month" },
@@ -219,6 +221,7 @@ export function applyCall(home: HomeState, call: FunctionCall): { home: HomeStat
       const waypoints = strList(a.waypoints);
       const mode = (str(a.mode, "driving") || "driving") as TravelMode;
       const avoid = strList(a.avoid) as AvoidFlag[];
+      const optimize = a.optimize === true;
       const via = waypoints.length ? ` via ${waypoints.join(" → ")}` : "";
       const from = origin ? `${origin} → ` : "";
       return {
@@ -229,8 +232,9 @@ export function applyCall(home: HomeState, call: FunctionCall): { home: HomeStat
           navWaypoints: waypoints,
           navMode: mode,
           navAvoid: avoid,
+          navOptimize: optimize,
         }),
-        message: `route ${mode} ${from}${destination}${via}`,
+        message: `route ${mode} ${from}${destination}${via}${optimize ? " · optimized" : ""}`,
       };
     }
     case "stop_navigation":
@@ -242,6 +246,7 @@ export function applyCall(home: HomeState, call: FunctionCall): { home: HomeStat
           navWaypoints: [],
           navMode: "driving",
           navAvoid: [],
+          navOptimize: false,
         }),
         message: "navigation stopped",
       };

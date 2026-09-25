@@ -211,6 +211,7 @@ private fun fill(tool: ToolSpec, clause: String, layer: Int): FunctionCall? {
                     "waypoints" to plan.waypoints,
                     "mode" to plan.mode,
                     "avoid" to plan.avoid,
+                    "optimize" to plan.optimize,
                 ),
             )
         }

@@ -10,13 +10,13 @@ Latch is the code *around* the model:
 4. **Loop** — `complete()` → gate → mutate → verify
 5. **Gates** — confidence ≥ 0.72 auto-executes, middling asks, empty list refuses (never guesses a tool)
 
-v1.1.1 keeps every stop on the route. “Drive to the gas station and then the pharmacy and then JFK” stays one trip. Google Maps gets each place as its own stop (`daddr=a+to:b+to:c`), instead of turn-by-turn to a single destination.
+v1.1.2 understands a spoken chain. “Give me the most efficient route from Walmart to Eagle to Aldi to Taco Bell” is four stops. “Most efficient” asks Maps to reorder the middle stops. Otherwise the order you said is kept, and every stop is entered.
 
 Sibling project: private [`iaz54/jevharness`](https://github.com/iaz54/jevharness) (AccessibilityService + TypeSafe Jev). Latch is the tool-calling rung. JevHarness is the UI-control rung.
 
 ## Install the APK
 
-**[Download Latch-1.1.1.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.1.1.apk)** — debug-signed, Android 8+. Reinstall over 1.1.0. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
+**[Download Latch-1.1.2.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.1.2.apk)** — debug-signed, Android 8+. Reinstall over 1.1.1. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
 
 On the phone: allow unknown sources. If Chrome says the file is uncommon, tap Keep, then Install.
 
@@ -26,6 +26,7 @@ GitHub Actions builds a fresh debug APK on every push to `main` (artifact **`lat
 
 ```
 drive from home to JFK via a gas station and the pharmacy, avoid tolls
+give me the most efficient route from walmart to eagle to aldi to taco bell
 walk from Washington Square to the Brooklyn Bridge via the High Line
 transit from Penn Station to the Met then Central Park
 take me home
@@ -36,7 +37,7 @@ find late night pizza near me
 turn on the fan, set temperature to 10°, turn on bedroom light
 ```
 
-Navigation fills every stop in Google Maps: origin, up to nine stops, then the destination. A single destination still starts turn-by-turn. Multi-stop routes use Maps’ `+to:` chain so the app enters each place, not just the last one.
+Navigation fills every stop in Google Maps. “A to B to C to D” stays in that order. “Most efficient” lets Maps reorder the stops between the first and last place. A single destination still starts turn-by-turn.
 
 Phone actions that Android will not toggle silently hand off to the real system surface: Wi-Fi, Bluetooth, airplane mode, Do Not Disturb, display, sound (volume is applied on the music stream), alarms, timers, dialer, SMS, email, calendar, and launching installed apps.
 

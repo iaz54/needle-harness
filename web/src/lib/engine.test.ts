@@ -81,6 +81,24 @@ test("maps lists every stop instead of navigating to one", () => {
   assert.match(single, /destination=Airport/);
 });
 
+test("spoken to-chain with an efficient order", () => {
+  const text = "Hey, give me the most efficient route from walmart to eagle to aldi to taco bell";
+  assert.equal(splitClauses(text).length, 1);
+  const route = parseRoute(splitClauses(text)[0]!);
+  assert.equal(route?.origin, "walmart");
+  assert.deepEqual(route?.waypoints, ["eagle", "aldi"]);
+  assert.equal(route?.destination, "taco bell");
+  assert.equal(route?.optimize, true);
+  assert.equal(route?.mode, "driving");
+  const url = buildMapsUrl(route!, []);
+  assert.match(url, /origin=walmart/);
+  assert.match(url, /destination=taco\+bell|destination=taco%20bell/);
+  assert.match(url, /waypoints=optimize:true\|eagle\|aldi/);
+  assert.doesNotMatch(url, /dir_action=navigate/);
+  const phone = androidDirectionsUrl(route!, []);
+  assert.match(phone, /waypoints=optimize:true\|eagle\|aldi/);
+});
+
 test("house clauses stay separate", () => {
   const clauses = splitClauses("turn on the fan, set temperature to 10°, turn on bedroom light");
   assert.equal(clauses.length, 3);

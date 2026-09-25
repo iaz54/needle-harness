@@ -6,6 +6,7 @@ data class RoutePlan(
     val waypoints: List<String>,
     val mode: String,
     val avoid: List<String>,
+    val optimize: Boolean = false,
 )
 
 object RouteText {
@@ -39,10 +40,18 @@ object RouteText {
     )
 
     fun parse(raw: String): RoutePlan? {
-        if (STOP_NAV.containsMatchIn(raw) && !Regex("""\b(?:from|via|to)\b""", RegexOption.IGNORE_CASE).containsMatchIn(raw)) {
+        val spoken = normalizeAsk(raw)
+        if (spoken.isEmpty()) return null
+        val optimize = Regex(
+            """\b(?:most efficient|efficient route|fastest|shortest|quickest|best order|optimi[sz]e)\b""",
+            RegexOption.IGNORE_CASE,
+        ).containsMatchIn(raw)
+        fun pack(origin: String, destination: String, waypoints: List<String>, mode: String, avoid: List<String>) =
+            RoutePlan(origin, destination, waypoints, mode, avoid, optimize)
+        if (STOP_NAV.containsMatchIn(spoken) && !Regex("""\b(?:from|via|to)\b""", RegexOption.IGNORE_CASE).containsMatchIn(spoken)) {
             return null
         }
-        val (avoid, rest0) = parseAvoid(raw)
+        val (avoid, rest0) = parseAvoid(spoken)
         val mode = parseMode(rest0)
         val rest = rest0
 
@@ -57,14 +66,14 @@ object RouteText {
             if (via != null) {
                 val destination = aliasPlace(via.groupValues[1])
                 if (destination.length >= 2) {
-                    return RoutePlan(origin, destination, splitPlaces(via.groupValues[2]).take(9), mode, avoid)
+                    return pack(origin, destination, splitPlaces(via.groupValues[2]).take(9), mode, avoid)
                 }
             }
             val ordered = splitPlaces(tail)
             if (ordered.size >= 2) {
-                return RoutePlan(origin, ordered.last(), ordered.dropLast(1).take(9), mode, avoid)
+                return pack(origin, ordered.last(), ordered.dropLast(1).take(9), mode, avoid)
             }
-            if (ordered.size == 1) return RoutePlan(origin, ordered[0], emptyList(), mode, avoid)
+            if (ordered.size == 1) return pack(origin, ordered[0], emptyList(), mode, avoid)
         }
 
         val onTheWay = Regex(
@@ -74,7 +83,7 @@ object RouteText {
         if (onTheWay != null) {
             val destination = aliasPlace(onTheWay.groupValues[2])
             if (destination.length >= 2) {
-                return RoutePlan("", destination, splitPlaces(onTheWay.groupValues[1]).take(9), mode, avoid)
+                return pack("", destination, splitPlaces(onTheWay.groupValues[1]).take(9), mode, avoid)
             }
         }
 
@@ -85,7 +94,7 @@ object RouteText {
         if (toVia != null) {
             val destination = aliasPlace(toVia.groupValues[1])
             if (destination.length >= 2) {
-                return RoutePlan("", destination, splitPlaces(toVia.groupValues[2]).take(9), mode, avoid)
+                return pack("", destination, splitPlaces(toVia.groupValues[2]).take(9), mode, avoid)
             }
         }
 
@@ -93,15 +102,15 @@ object RouteText {
         if (arrows.size >= 2) {
             val places = arrows.map { aliasPlace(it) }.filter { it.length >= 2 }
             if (places.size >= 2) {
-                return RoutePlan(places.first(), places.last(), places.drop(1).dropLast(1).take(9), mode, avoid)
+                return pack(places.first(), places.last(), places.drop(1).dropLast(1).take(9), mode, avoid)
             }
         }
 
         val listed = Regex("""\b(?:route|trip|itinerary)\b\s*[:\-]?\s+(.+)$""", RegexOption.IGNORE_CASE).find(rest)
-        if (listed != null && Regex(""",| then | and |->|→""").containsMatchIn(listed.groupValues[1])) {
+        if (listed != null && Regex(""",| then | and | to |->|→""").containsMatchIn(listed.groupValues[1])) {
             val places = splitPlaces(listed.groupValues[1])
             if (places.size >= 2) {
-                return RoutePlan(places.first(), places.last(), places.drop(1).dropLast(1).take(9), mode, avoid)
+                return pack(places.first(), places.last(), places.drop(1).dropLast(1).take(9), mode, avoid)
             }
         }
 
@@ -112,15 +121,17 @@ object RouteText {
         if (STOP_NAV.containsMatchIn(rest)) return null
         val places = splitPlaces(start.groupValues[1])
         if (places.size >= 2) {
-            return RoutePlan("", places.last(), places.dropLast(1).take(9), mode, avoid)
+            return pack("", places.last(), places.dropLast(1).take(9), mode, avoid)
         }
         val destination = places.firstOrNull() ?: return null
         if (destination.length < 2) return null
-        return RoutePlan("", destination, emptyList(), mode, avoid)
+        return pack("", destination, emptyList(), mode, avoid)
     }
 
     fun split(text: String): List<String> {
-        val atoms = text.split(Regex("""\s*(?:;|\band then\b|,|\band\b|\bthen\b)\s*""", RegexOption.IGNORE_CASE))
+        val cleaned = normalizeAsk(text)
+        if (cleaned.isEmpty()) return emptyList()
+        val atoms = cleaned.split(Regex("""\s*(?:;|\band then\b|,|\band\b|\bthen\b)\s*""", RegexOption.IGNORE_CASE))
             .map { it.trim() }
             .filter { it.isNotEmpty() }
         val merged = mutableListOf<String>()
@@ -177,6 +188,22 @@ object RouteText {
         return avoid.toList() to rest
     }
 
+    private fun normalizeAsk(text: String): String {
+        var s = text.trim()
+        var prev = ""
+        val steps = listOf(
+            Regex("""^(?:hey|hi|hello|yo|ok|okay)\b[,\s!]*""", RegexOption.IGNORE_CASE),
+            Regex("""^(?:please|kindly)\s+""", RegexOption.IGNORE_CASE),
+            Regex("""^(?:can you|could you|would you|will you)\s+""", RegexOption.IGNORE_CASE),
+            Regex("""^(?:give me|gimme|get me|find me|show me|i need|i want)\s+(?:the\s+)?""", RegexOption.IGNORE_CASE),
+        )
+        while (s.isNotEmpty() && s != prev) {
+            prev = s
+            for (step in steps) s = step.replace(s, "").trim()
+        }
+        return s
+    }
+
     private fun aliasPlace(raw: String): String {
         val c = raw.replace(Regex("""\s+(?:please|now|today)$""", RegexOption.IGNORE_CASE), "")
             .trimEnd('.', '?', '!', ',')
@@ -193,7 +220,7 @@ object RouteText {
     }
 
     private fun splitPlaces(s: String): List<String> {
-        return s.split(Regex("""\s*(?:,|&|\+|\band then\b|\band\b|\bthen\b|\bplus\b|->|→)\s*""", RegexOption.IGNORE_CASE))
+        return s.split(Regex("""\s*(?:,|&|\+|\band then\b|\band\b|\bthen\b|\bplus\b|\bto\b|->|→)\s*""", RegexOption.IGNORE_CASE))
             .map { it.replace(Regex("""^(?:(?:at|to|via|through|by|then|stop(?:ping)?(?:\s+at)?)\s+)+""", RegexOption.IGNORE_CASE), "").trim() }
             .map { aliasPlace(it) }
             .filter { it.length >= 2 }

@@ -28,6 +28,7 @@ data class PhoneState(
     var navWaypoints: MutableList<String> = mutableListOf(),
     var navMode: String = "driving",
     var navAvoid: MutableList<String> = mutableListOf(),
+    var navOptimize: Boolean = false,
 )
 
 data class HomeState(
@@ -145,9 +146,11 @@ fun execute(home: HomeState, call: FunctionCall): String {
             home.phone.navWaypoints = strings(a["waypoints"])
             home.phone.navMode = (a["mode"] as? String) ?: "driving"
             home.phone.navAvoid = strings(a["avoid"])
+            home.phone.navOptimize = a["optimize"] as? Boolean ?: false
             val via = if (home.phone.navWaypoints.isEmpty()) "" else " via ${home.phone.navWaypoints.joinToString(" → ")}"
             val from = if (home.phone.navOrigin.isBlank()) "" else "${home.phone.navOrigin} → "
-            "route ${home.phone.navMode} $from${home.phone.navDestination}$via"
+            val order = if (home.phone.navOptimize) " · optimized" else ""
+            "route ${home.phone.navMode} $from${home.phone.navDestination}$via$order"
         }
         "stop_navigation" -> {
             home.phone.navActive = false
@@ -156,6 +159,7 @@ fun execute(home: HomeState, call: FunctionCall): String {
             home.phone.navWaypoints = mutableListOf()
             home.phone.navMode = "driving"
             home.phone.navAvoid = mutableListOf()
+            home.phone.navOptimize = false
             "navigation stopped"
         }
         "create_note" -> {
