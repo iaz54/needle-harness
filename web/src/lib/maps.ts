@@ -33,13 +33,18 @@ function avoidLetters(avoid: AvoidFlag[]) {
   return avoid.map((flag) => (flag === "tolls" ? "t" : flag === "highways" ? "h" : "f")).join("");
 }
 
-function routePath(origin: string, destination: string, waypoints: string[], route: RouteArgs) {
-  const ordered = [origin, ...waypoints, destination].filter(Boolean);
-  const path = ordered.map((stop) => encodeURIComponent(stop)).join("/");
+function directionsUrl(origin: string, destination: string, waypoints: string[], route: RouteArgs) {
   const query = new URLSearchParams();
+  query.set("api", "1");
+  query.set("destination", destination);
   query.set("travelmode", route.mode);
+  if (origin) query.set("origin", origin);
   if (route.avoid.length) query.set("avoid", route.avoid.join("|"));
-  return `https://www.google.com/maps/dir/${path}?${query.toString()}`;
+  const base = `https://www.google.com/maps/dir/?${query.toString()}`;
+  if (!waypoints.length) return base;
+  // A slash path (/dir/a/b/c) makes the Android Maps app search one stop.
+  // Pipe-separated waypoints open the directions list. No dir_action=navigate.
+  return `${base}&waypoints=${waypoints.map((stop) => encodeURIComponent(stop)).join("%7C")}`;
 }
 
 function stopsOf(route: RouteArgs, places: SavedPlace[]) {
@@ -55,7 +60,7 @@ function stopsOf(route: RouteArgs, places: SavedPlace[]) {
 export function buildMapsUrl(route: RouteArgs, places: SavedPlace[]) {
   const { origin, destination, waypoints } = stopsOf(route, places);
   const ordered = [origin, ...waypoints, destination].filter(Boolean);
-  if (ordered.length >= 2) return routePath(origin, destination, waypoints, route);
+  if (ordered.length >= 2) return directionsUrl(origin, destination, waypoints, route);
   const query = new URLSearchParams();
   query.set("api", "1");
   query.set("destination", destination);
@@ -65,7 +70,7 @@ export function buildMapsUrl(route: RouteArgs, places: SavedPlace[]) {
   return `https://www.google.com/maps/dir/?${query.toString()}`;
 }
 
-/** Phone Maps fills one destination box unless stops are chained with +to:. */
+/** Multi-stop trips use the directions URL. A slash path makes the Maps app search one stop. */
 export function androidDirectionsUrl(route: RouteArgs, places: SavedPlace[]) {
   const { origin, destination, waypoints } = stopsOf(route, places);
   const chain = [...waypoints, destination].filter(Boolean);
@@ -73,7 +78,7 @@ export function androidDirectionsUrl(route: RouteArgs, places: SavedPlace[]) {
     const avoid = avoidLetters(route.avoid);
     return `google.navigation:q=${encodeURIComponent(destination)}&mode=${modeLetter(route.mode)}${avoid ? `&avoid=${avoid}` : ""}`;
   }
-  return routePath(origin, destination, waypoints, route);
+  return directionsUrl(origin, destination, waypoints, route);
 }
 
 export function mapsSearchUrl(query: string) {

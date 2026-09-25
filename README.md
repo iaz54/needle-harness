@@ -10,13 +10,13 @@ Latch is the code *around* the model:
 4. **Loop** — `complete()` → gate → mutate → verify
 5. **Gates** — confidence ≥ 0.72 auto-executes, middling asks, empty list refuses (never guesses a tool)
 
-v1.1.3 takes a normal sentence. “Hey, give me the most efficient route from Walmart to Eagle to Aldi to Taco Bell” is four stops, and Maps is opened with each one filled in: Walmart, then Eagle, then Aldi, then Taco Bell.
+v1.1.4 opens the directions list. The previous link made the Maps app search a single stop, like “a shell gas station,” instead of keeping the rest of the trip.
 
 Sibling project: private [`iaz54/jevharness`](https://github.com/iaz54/jevharness) (AccessibilityService + TypeSafe Jev). Latch is the tool-calling rung. JevHarness is the UI-control rung.
 
 ## Install the APK
 
-**[Download Latch-1.1.3.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.1.3.apk)** — debug-signed, Android 8+. Reinstall over 1.1.2. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
+**[Download Latch-1.1.4.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.1.4.apk)** — debug-signed, Android 8+. Reinstall over 1.1.3. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
 
 On the phone: allow unknown sources. If Chrome says the file is uncommon, tap Keep, then Install.
 

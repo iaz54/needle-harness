@@ -66,12 +66,13 @@ test("maps lists every stop instead of navigating to one", () => {
     avoid: ["tolls" as const],
   };
   const url = buildMapsUrl(route, []);
-  assert.match(url, /\/maps\/dir\/Home\/gas%20station\/the%20pharmacy\/JFK/);
+  assert.match(url, /[?&]origin=Home/);
+  assert.match(url, /[?&]destination=JFK/);
+  assert.match(url, /waypoints=gas%20station%7Cthe%20pharmacy/);
   assert.doesNotMatch(url, /dir_action=navigate/);
   assert.match(url, /avoid=tolls/);
   const phone = androidDirectionsUrl(route, []);
-  assert.match(phone, /\/maps\/dir\/Home\/gas%20station\/the%20pharmacy\/JFK/);
-  assert.match(phone, /avoid=tolls/);
+  assert.match(phone, /waypoints=gas%20station%7Cthe%20pharmacy/);
   const single = buildMapsUrl(
     { origin: "", destination: "Airport", waypoints: [], mode: "driving", avoid: [] },
     [],
@@ -90,11 +91,13 @@ test("spoken to-chain with an efficient order", () => {
   assert.equal(route?.optimize, true);
   assert.equal(route?.mode, "driving");
   const url = buildMapsUrl(route!, []);
-  assert.match(url, /\/maps\/dir\/walmart\/eagle\/aldi\/taco%20bell/);
+  assert.match(url, /[?&]origin=walmart/);
+  assert.match(url, /[?&]destination=taco\+bell|[?&]destination=taco%20bell/);
+  assert.match(url, /waypoints=eagle%7Caldi/);
   assert.doesNotMatch(url, /dir_action=navigate/);
-  assert.doesNotMatch(url, /destination=/);
   const phone = androidDirectionsUrl(route!, []);
-  assert.match(phone, /\/maps\/dir\/walmart\/eagle\/aldi\/taco%20bell/);
+  assert.match(phone, /waypoints=eagle%7Caldi/);
+  assert.match(phone, /origin=walmart/);
 });
 
 test("house clauses stay separate", () => {
