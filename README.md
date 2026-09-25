@@ -16,7 +16,7 @@ Sibling project: private [`iaz54/jevharness`](https://github.com/iaz54/jevharnes
 
 ## Install the APK
 
-**[Download Latch-1.0.0.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.0.0.apk)** — debug-signed, Android 8+. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
+**[Download Latch-1.1.0.apk](https://github.com/iaz54/needle-harness/raw/main/dist/Latch-1.1.0.apk)** — debug-signed, Android 8+. Also on [Releases](https://github.com/iaz54/needle-harness/releases/tag/v1.0.0).
 
 On the phone: allow unknown sources. If Chrome says the file is uncommon, tap Keep, then Install.
 
